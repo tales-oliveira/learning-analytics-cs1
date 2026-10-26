@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 from typing import List, Optional, Literal
 
 
@@ -7,7 +7,6 @@ class ProfessorCreate(BaseModel):
     nome: str = ""
     senha: str
 
-
 class ProfessorResponse(BaseModel):
     id: int
     email: str
@@ -15,10 +14,26 @@ class ProfessorResponse(BaseModel):
     created_at: str
 
 
+
+class StudentCreate(BaseModel):
+    matricula: str
+    nome: str = ""
+    senha: str
+
+class StudentResponse(BaseModel):
+    id: int
+    matricula: str
+    nome: str
+    created_at: str
+    turma_id: Optional[int] = None
+
+
+
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
-    professor: ProfessorResponse
+    professor: Optional[ProfessorResponse] = None
+    student: Optional[StudentResponse] = None
 
 
 class TurmaCreate(BaseModel):
@@ -216,6 +231,8 @@ class QuestionUpdate(BaseModel):
 class ProfessorUpdate(BaseModel):
     nome: str
 
+class StudentUpdate(BaseModel):
+    nome: str
 
 class PasswordChange(BaseModel):
     senha_atual: str
@@ -408,3 +425,41 @@ class TurmaAnalyticsResponse(BaseModel):
     total_submissoes: int
     provas: List[ExamAnalytics]
     top_erros: List[ErrorCount]
+
+
+
+class StudentFeedback(BaseModel):
+    overall: str = ""
+    pontos_fortes: list[str] = Field(default_factory=list)
+    melhorias: list[str] = Field(default_factory=list)
+    next_steps: str = ""
+    highlight_lines: list[int] = Field(default_factory=list)
+    error: str | None = None
+
+
+class SubmitExamRequest(BaseModel):
+    drafts: dict[str, str] = Field(default_factory=dict)
+
+
+class SubmitExamResponse(BaseModel):
+    ok: bool
+    feedback: dict[str, StudentFeedback] = Field(default_factory=dict)
+    # Resultado completo do evaluate_code por questão (dict livre).
+    results: dict[str, dict] = Field(default_factory=dict)
+
+
+class TestCodeRequest(BaseModel):
+    question_number: str
+    code: str
+
+
+# teste individual de código para não sobrecarregar o gemini
+class TestCodeResponse(BaseModel):
+    question_number: str
+    compile_error: str = ""
+    warnings: str = ""
+    all_tests_passed: bool = False
+    diagnosis: dict = Field(default_factory=dict)
+    test_results: list[dict] = Field(default_factory=list)
+    function_check: dict | None = None
+    ai_feedback: StudentFeedback | None = None   # ← novo

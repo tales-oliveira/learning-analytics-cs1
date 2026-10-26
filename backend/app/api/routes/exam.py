@@ -42,6 +42,7 @@ from app.services.exam_service import (
     update_exam,
     update_question,
 )
+from app.api._compartilhado import exam_to_response, question_to_response
 
 router = APIRouter(prefix="/exam", tags=["exam"])
 
@@ -98,7 +99,7 @@ def get_exam(exam_id: int, db: Session = Depends(get_db)):
     exam = db.query(Exam).filter(Exam.id == exam_id).first()
     if not exam:
         raise HTTPException(status_code=404, detail="Prova não encontrada.")
-    return _exam_to_response(exam)
+    return exam_to_response(exam)
 
 
 # ── rotas protegidas (professor autenticado) ─────────────────────────────────
@@ -145,7 +146,7 @@ def patch_exam(
         if not turma:
             raise HTTPException(status_code=404, detail="Turma não encontrada.")
     update_exam(exam, db, filename=body.filename, turma_id=body.turma_id)
-    return _exam_to_response(exam)
+    return exam_to_response(exam)
 
 
 @router.delete("/{exam_id}", status_code=204)
@@ -169,7 +170,7 @@ def post_question(
     if any(q.number == body.number for q in exam.questions):
         raise HTTPException(status_code=409, detail=f"Já existe a questão {body.number}.")
     question = create_question(exam.id, body.model_dump(), db)
-    return _question_to_response(question)
+    return question_to_response(question)
 
 
 @router.put("/{exam_id}/questions/{question_number}", response_model=QuestionResponse)
@@ -182,7 +183,7 @@ def put_question(
 ):
     question = get_question_or_404(exam_id, question_number, db, professor_id=professor.id)
     update_question(question, body.model_dump(exclude_unset=True), db)
-    return _question_to_response(question)
+    return question_to_response(question)
 
 
 @router.delete("/{exam_id}/questions/{question_number}", status_code=204)
@@ -494,68 +495,3 @@ def get_question_submissions(
             for s in question.submissions
         ],
     }
-
-
-_SINGLE_LINE_HINTS = (
-    "uma unica linha", "uma única linha", "em uma linha", "numa unica linha",
-    "numa única linha", "em uma so linha", "em uma só linha",
-    "um unico caractere", "um único caractere",
-)
-
-
-def _question_warnings(q: Question) -> list[str]:
-    """Sinaliza extrações suspeitas para o professor revisar antes de confiar no veredito."""
-    warnings = []
-
-    subs = q.submissions
-    if subs and not any(s.all_tests_passed for s in subs):
-        warnings.append(
-            f"Nenhuma das {len(subs)} submissões passou. Pode ser que o gabarito ou "
-            "as estruturas exigidas estejam errados. Confira os casos de teste."
-        )
-
-    statement = (q.statement or "").lower()
-    if any(h in statement for h in _SINGLE_LINE_HINTS) and any(
-        "\n" in (tc.expected_output or "") for tc in q.test_cases
-    ):
-        warnings.append(
-            "Algum caso de teste tem a saída esperada quebrada em mais de uma linha, "
-            "mas o enunciado pede uma única linha. Pode ser quebra de linha do PDF."
-        )
-
-    return warnings
-
-
-def _question_to_response(q: Question) -> QuestionResponse:
-    return QuestionResponse(
-        id=q.id,
-        number=q.number,
-        statement=q.statement,
-        points=q.points if q.points is not None else 1.0,
-        required_structures=q.required_structures or [],
-        forbidden_structures=q.forbidden_structures or [],
-        requires_loop=q.requires_loop,
-        required_functions=q.required_functions or [],
-        test_case_count=len(q.test_cases),
-        warnings=_question_warnings(q),
-    )
-
-
-def _question_sort_key(q):
-    """Ordena por número da questão (numérico quando possível: 2 antes de 10)."""
-    try:
-        return (0, int(q.number))
-    except (TypeError, ValueError):
-        return (1, q.number or "")
-
-
-def _exam_to_response(exam: Exam) -> ExamResponse:
-    return ExamResponse(
-        id=exam.id,
-        filename=exam.filename,
-        created_at=exam.created_at.isoformat() if exam.created_at else "",
-        turma_id=exam.turma_id,
-        turma_nome=exam.turma.nome if exam.turma else None,
-        total_points=sum((q.points if q.points is not None else 1.0) for q in exam.questions),
-        questions=[_question_to_response(q) for q in sorted(exam.questions, key=_question_sort_key)],
-    )

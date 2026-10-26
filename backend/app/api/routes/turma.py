@@ -1,15 +1,17 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+from pydantic import BaseModel
 from app.auth.dependencies import get_current_professor
 from app.models.database import get_db
-from app.models.orm import Professor
+from app.models.orm import Professor    
 from app.models.orm import Turma
+
 from app.models.schemas import (
-    TurmaAnalyticsResponse, TurmaCreate, TurmaDetailResponse, TurmaResponse, TurmaUpdate,
+    TurmaAnalyticsResponse, TurmaCreate, TurmaDetailResponse, TurmaResponse, TurmaUpdate
 )
 from app.services.turma_service import (
-    create_turma, delete_turma, get_turma_analytics, get_turma_detail, list_turmas, update_turma,
+    create_turma, delete_turma, get_turma_analytics, get_turma_detail, list_turmas, update_turma
 )
 
 router = APIRouter(prefix="/turmas", tags=["turmas"])
@@ -86,3 +88,10 @@ def get_analytics(
     if not data:
         raise HTTPException(status_code=404, detail="Turma não encontrada.")
     return data
+
+
+# app/api/routes
+class StudentLoginPayload(BaseModel):
+    matricula: str
+    senha: str
+    

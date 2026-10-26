@@ -17,12 +17,11 @@ const TurmaListPage = lazy(() => import('./pages/TurmaListPage'))
 const TurmaDetailPage = lazy(() => import('./pages/TurmaDetailPage'))
 const ExamUploadPage = lazy(() => import('./pages/ExamUploadPage'))
 const SubmissionsPage = lazy(() => import('./pages/SubmissionsPage'))
-const StudentSubmitPage = lazy(() => import('./pages/StudentSubmitPage'))
 const BulkSubmitPage = lazy(() => import('./pages/BulkSubmitPage'))
 const StudentsPage = lazy(() => import('./pages/StudentsPage'))
-const StudentDetailPage = lazy(() => import('./pages/StudentDetailPage'))
 const QuestionPage = lazy(() => import('./pages/QuestionPage'))
 const ProfilePage = lazy(() => import('./pages/ProfilePage'))
+
 
 function PageFallback() {
   return (
@@ -38,9 +37,6 @@ export default function App() {
       <BrowserRouter>
         <Suspense fallback={<PageFallback />}>
           <Routes>
-            {/* Público — alunos */}
-            <Route path="submit/:examId" element={<StudentSubmitPage />} />
-
             {/* Auth */}
             <Route path="login" element={<LoginPage />} />
             <Route path="register" element={<RegisterPage />} />
@@ -61,7 +57,6 @@ export default function App() {
                 <Route path="exam/:id/questions/:num/submissions" element={<SubmissionsPage />} />
                 <Route path="exam/:id/bulk-submit" element={<BulkSubmitPage />} />
                 <Route path="exam/:id/students" element={<StudentsPage />} />
-                <Route path="exam/:id/students/:matricula" element={<StudentDetailPage />} />
               </Route>
             </Route>
 

@@ -113,7 +113,7 @@ export default function StudentsPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-200 bg-gray-50">
-                <th className="text-left px-5 py-3 text-xs font-medium text-gray-500 min-w-[180px]">Matrícula</th>
+                <th className="text-left px-5 py-3 text-xs font-medium text-gray-500 min-w-45">Matrícula</th>
                 {data.question_numbers.map(num => (
                   <th key={num} className="px-3 py-3 text-xs font-medium text-gray-500 text-center">
                     Q{num}
@@ -140,7 +140,7 @@ export default function StudentsPage() {
                             {student.matricula?.[0]}
                           </span>
                         </div>
-                        <span className="font-medium text-gray-900 truncate max-w-[140px]">{student.matricula}</span>
+                        <span className="font-medium text-gray-900 truncate max-w-35">{student.matricula}</span>
                       </div>
                     </td>
                     {student.questions.map(qs => (

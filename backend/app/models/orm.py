@@ -16,6 +16,25 @@ class Professor(Base):
     turmas = relationship("Turma", back_populates="professor")
 
 
+class Student(Base):
+    __tablename__ = "students"
+
+    id = Column(Integer, primary_key=True, index=True)
+    matricula = Column(String, unique=True, nullable=False, index=True)
+    nome = Column(String, nullable=False)
+    senha_hash = Column(String, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    # n alunos para 1 turma
+    turma_id = Column(Integer, ForeignKey("turmas.id"), nullable=True)
+
+    #back_populates aponta para "alunos" na classe Turma
+    turma = relationship("Turma", back_populates="students")
+
+    submissions = relationship("Submission", back_populates="student") #submissoes do aluno
+
+
+
 class Turma(Base):
     __tablename__ = "turmas"
 
@@ -26,6 +45,7 @@ class Turma(Base):
     professor_id = Column(Integer, ForeignKey("professors.id"), nullable=True)
 
     professor = relationship("Professor", back_populates="turmas")
+    students = relationship("Student", back_populates="turma")
     exams = relationship("Exam", back_populates="turma")
 
 
@@ -91,8 +111,11 @@ class Submission(Base):
     matricula = Column(String, nullable=True)
     submitted_at = Column(DateTime, default=datetime.utcnow)
 
+    student_id = Column(Integer, ForeignKey("students.id"), nullable=True) # chave estrangeira do estudante
+
     question = relationship("Question", back_populates="submissions")
     test_results = relationship("SubmissionTestResult", back_populates="submission", cascade="all, delete-orphan")
+    student = relationship("Student", back_populates="submissions")
 
 
 class QuestionCluster(Base):

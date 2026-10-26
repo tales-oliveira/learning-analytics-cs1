@@ -140,7 +140,7 @@ O backend segue uma separação em camadas:
 
 | Biblioteca | Versão | Papel |
 |---|---|---|
-| **google-genai** | 1.73.1 | SDK oficial do Google Gemini; utiliza o modelo `gemini-2.5-flash` para extração estruturada de questões e geração de insights pedagógicos |
+| **google-genai** | 1.73.1 | SDK oficial do Google Gemini; utiliza o modelo `gemini-3.6-flash` para extração estruturada de questões e geração de insights pedagógicos |
 
 ### Extração de Documentos
 
@@ -429,7 +429,7 @@ Para cada QuestionCluster da questão:
 Retorna lista de ClusterInsight {cluster_id, size, dominant_error, insight}
 ```
 
-**Decisão de modelo:** `gemini-2.5-flash` foi escolhido por oferecer boa qualidade de raciocínio pedagógico com latência aceitável e custo reduzido em relação ao modelo Pro. A API é usada via SDK oficial `google-genai`.
+**Decisão de modelo:** `gemini-3.6-flash` foi escolhido por oferecer boa qualidade de raciocínio pedagógico com latência aceitável e custo reduzido em relação ao modelo Pro. A API é usada via SDK oficial `google-genai`.
 
 **Representante de cluster:** a submissão enviada ao Gemini é a mais próxima ao centróide geométrico do cluster no espaço UMAP 2D — ou seja, a mais "típica" do grupo.
 

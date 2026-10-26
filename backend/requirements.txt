@@ -15,10 +15,12 @@ python-docx
 
 # IA / LLM
 google-genai
+openai
 
 # Persistência
 sqlalchemy
 psycopg2-binary
+alembic
 
 # ML
 scikit-learn

@@ -1,3 +1,6 @@
+import json
+import re
+import time
 from google import genai
 from google.genai import types
 from app.core.config import GEMINI_API_KEY
@@ -70,16 +73,27 @@ Retorne apenas o JSON com a chave "questions" contendo a lista de questões de c
     else:
         contents = prompt + f"\n\nTexto da prova:\n{raw_text}"
 
-    response = client.models.generate_content(
-        model="gemini-2.5-flash",
-        contents=contents,
-        config=types.GenerateContentConfig(
-            response_mime_type="application/json",
-        ),
-    )
+    chat = client.chats.create(
+            model="gemini-3.6-flash",
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+            )
+        )
+    
+    # testei com o erro 503 da api
+    max_retries = 3
+    response = None
+    for attempt in range(max_retries):
+        try:
+            response = chat.send_message(contents)
+            break
+        except Exception as e:
+            if "503" in str(e) and attempt < max_retries - 1:
+                time.sleep(2)  # Aguarda 2 segundos antes de tentar de novo
+                continue
+            raise e  
 
-    import json
-    import re
+
     text = response.text.strip()
     text = re.sub(r'^```(?:json)?\s*', '', text)
     text = re.sub(r'\s*```$', '', text)

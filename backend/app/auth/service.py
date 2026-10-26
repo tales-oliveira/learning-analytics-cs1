@@ -5,7 +5,7 @@ from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 
 from app.core.config import JWT_ALGORITHM, JWT_EXPIRE_HOURS, SECRET_KEY
-from app.models.orm import Professor
+from app.models.orm import Professor, Student
 
 _pwd = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -54,3 +54,28 @@ def authenticate_professor(email: str, senha: str, db: Session) -> Professor | N
     if not professor or not verify_password(senha, professor.senha_hash):
         return None
     return professor
+
+
+def register_student(matricula: str, nome: str, senha: str, db: Session) -> Student:
+    if db.query(Student).filter(Student.matricula == matricula.strip()).first():
+        raise ValueError("Matrícula já cadastrada.")
+    
+    aluno = Student(
+        matricula=matricula.strip(),
+        nome=nome.strip(),
+        senha_hash=hash_password(senha),
+        # turma_id fica vazio, pois ele vai se matricular com o código depois
+    )
+    db.add(aluno)
+    db.commit()
+    db.refresh(aluno)
+    return aluno
+
+
+def authenticate_student(matricula: str, senha: str, db: Session) -> Student | None:
+    aluno = db.query(Student).filter(Student.matricula == matricula.strip()).first()
+    
+    if not aluno or not verify_password(senha, aluno.senha_hash):
+        return None
+        
+    return aluno

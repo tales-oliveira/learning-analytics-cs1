@@ -4,7 +4,7 @@ from collections import Counter, defaultdict
 APPROVAL_THRESHOLD = 0.60
 from datetime import datetime
 from sqlalchemy.orm import Session
-from app.models.orm import Exam, Question, Submission, Turma
+from app.models.orm import Exam, Question, Submission, Turma, Student
 
 
 def create_turma(nome: str, codigo: str, db: Session, professor_id: int | None = None) -> Turma:
@@ -159,3 +159,36 @@ def get_turma_analytics(turma_id: int, db: Session, professor_id: int | None = N
         "provas": provas,
         "top_erros": top_erros,
     }
+
+
+#REVER
+def matricular_estudante_por_codigo(student_id: int, codigo_turma: str, db: Session) -> Turma:
+    """
+    Associa um aluno existente a uma turma a partir do código da turma digitado.
+    """
+    # 1. Busca a turma pelo código fornecido
+    turma = db.query(Turma).filter(Turma.codigo == codigo_turma).first()
+    if not turma:
+        raise ValueError("Código de turma inválido ou turma não encontrada.")
+
+    # 2. Busca o aluno logado
+    aluno = db.query(Student).filter(Student.id == student_id).first()
+    if not aluno:
+        raise ValueError("Aluno não encontrado.")
+
+    # 3. Atualiza o vínculo da turma no aluno
+    aluno.turma_id = turma.id
+
+    db.commit()
+    db.refresh(aluno)
+    db.refresh(turma)
+
+    return turma  # <- Retorna a turma em vez do aluno
+
+def get_turma_do_estudante(student_id: int, db: Session) -> Turma | None:
+    aluno = db.query(Student).filter(Student.id == student_id).first()
+    if not aluno or not aluno.turma_id:
+        return None
+
+    return db.query(Turma).filter(Turma.id == aluno.turma_id).first()
+

@@ -14,3 +14,4 @@ export const updateProfile = (nome) =>
 
 export const changePassword = (senha_atual, senha_nova) =>
   api.put('/auth/me/password', { senha_atual, senha_nova })
+
