@@ -36,7 +36,7 @@ export default function StudentExamFeedbackPage() {
         setError(err.response?.data?.detail || 'Erro ao carregar o feedback.');
       });
   }, [examId]);
-
+  
   if (error) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">

@@ -1,11 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+
 from pydantic import BaseModel
 from datetime import datetime, timezone 
 
 from app.auth.dependencies import get_current_student
 from app.models.database import get_db
-from app.models.orm import Student, Turma, Exam, Question
+from app.models.orm import Student, Turma, Exam, Question, Submission
 from app.services.turma_service import matricular_estudante_por_codigo, get_turma_do_estudante
 from app.services.submission_service import evaluate_submission
 from app.models.schemas import SubmitExamRequest, SubmitExamResponse, ExamResponse, TestCodeRequest, TestCodeResponse 
@@ -55,11 +56,9 @@ def get_turma_detail(turma_id: int, current_student: Student = Depends(get_curre
         raise HTTPException(status_code=404, detail="Turma não encontrada.")
 
     exams = db.query(Exam).filter(Exam.turma_id == turma_id, Exam.is_published == True).all()
-
-    from datetime import datetime
     
     def calc_status(exam):
-        now = datetime.now() # <-- Usando hora local
+        now = datetime.now()
         if exam.start_time and now < exam.start_time: return "upcoming"
         if exam.end_time and now > exam.end_time: return "ended"
         return "active"
@@ -73,7 +72,13 @@ def get_turma_detail(turma_id: int, current_student: Student = Depends(get_curre
                 "created_at": exam.created_at.isoformat() if hasattr(exam, 'created_at') and exam.created_at else None,
                 "start_time": exam.start_time.isoformat() if exam.start_time else None,
                 "end_time": exam.end_time.isoformat() if exam.end_time else None,
-                "status": calc_status(exam)
+                "status": calc_status(exam),
+
+                # verifica se o aluno já tem alguma submissão nesta prova, para bloquear o acesso
+                "has_submitted": db.query(Submission).filter(
+                    Submission.matricula == current_student.matricula,
+                    Submission.question.has(Question.exam_id == exam.id)
+                ).first() is not None
             } for exam in exams
         ]
     }  
@@ -90,10 +95,17 @@ def get_exam_for_student(
     if current_student.turma_id != exam.turma_id:
         raise HTTPException(status_code=403, detail="Não tem permissão para aceder a esta prova.")
 
+    #bloqueia a prova, se o estudante já tiver submetido
+    has_sub = db.query(Submission).filter(
+        Submission.matricula == current_student.matricula,
+        Submission.question.has(Question.exam_id == exam.id)
+    ).first()
+    if has_sub:
+        raise HTTPException(status_code=403, detail="Você já enviou esta prova. Aguarde o encerramento para ver o feedback.")
+
     if not exam.is_published:
         raise HTTPException(status_code=403, detail="Prova não disponível.")
     
-    from datetime import datetime, timezone
     if exam.start_time:
         start_utc = exam.start_time.replace(tzinfo=timezone.utc) if exam.start_time.tzinfo is None else exam.start_time
         if datetime.now(timezone.utc) < start_utc:

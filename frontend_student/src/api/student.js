@@ -28,3 +28,7 @@ export const testStudentCode = (examId, questionNumber, code, withFeedback = fal
     { params: { with_feedback: withFeedback } }
   );
 };
+
+export const getExamFeedback = (examId) => {
+  return api.get(`/student/exam/${examId}/feedback`);
+};

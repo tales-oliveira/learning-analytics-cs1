@@ -93,6 +93,7 @@ export default function StudentTurmaPage() {
                   
                   const isActive = exam.status === 'active';
                   const isEnded = exam.status === 'ended';
+                  const hasSubmitted = exam.has_submitted;
 
                   return (
                     <div key={exam.id} className="bg-white rounded-xl border border-gray-200 p-5 flex flex-col justify-between hover:border-purple-300 hover:shadow-sm transition-all">
@@ -105,7 +106,12 @@ export default function StudentTurmaPage() {
                         </div>
                         
                         {/* Status visual */}
-                        {isActive && (
+                        {isActive && hasSubmitted && (
+                          <span className="inline-block mt-3 text-xs font-medium text-blue-700 bg-blue-50 px-2 py-1 rounded-md">
+                            ✓ Prova Enviada
+                          </span>
+                        )}
+                        {isActive && !hasSubmitted && (
                           <span className="inline-block mt-3 text-xs font-medium text-green-700 bg-green-50 px-2 py-1 rounded-md">
                             ⏳ Em andamento (Até {new Date(exam.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})
                           </span>
@@ -118,12 +124,21 @@ export default function StudentTurmaPage() {
                       </div>
                       
                       {/* Botões de ação */}
-                      {isActive && (
+                      {isActive && !hasSubmitted && (
                         <button
                           onClick={() => navigate(`/student/exam/${exam.id}`)}
                           className="w-full text-sm px-4 py-2 rounded-lg bg-purple-600 text-white hover:bg-purple-700 transition-colors text-center font-medium"
                         >
                           Acessar Avaliação
+                        </button>
+                      )}
+                      
+                      {isActive && hasSubmitted && (
+                        <button
+                          disabled
+                          className="w-full text-sm px-4 py-2 rounded-lg bg-gray-100 text-gray-400 cursor-not-allowed text-center font-medium"
+                        >
+                          Aguardando Encerramento
                         </button>
                       )}
                       
