@@ -56,6 +56,9 @@ class Exam(Base):
     filename = Column(String)
     raw_text = Column(Text)
     created_at = Column(DateTime, default=datetime.utcnow)
+    is_published = Column(Boolean, default=False)
+    start_time = Column(DateTime, nullable=True)
+    end_time = Column(DateTime, nullable=True) 
     turma_id = Column(Integer, ForeignKey("turmas.id"), nullable=True)
 
     questions = relationship("Question", back_populates="exam", cascade="all, delete-orphan")

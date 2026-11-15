@@ -3,11 +3,11 @@ import logging
 import re
 
 from openai import OpenAI
+from app.core.config import CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_API_TOKEN
 
 logger = logging.getLogger(__name__)
 
-OLLAMA_BASE_URL = "http://localhost:11434/v1"
-OLLAMA_MODEL = "qwen2.5-coder:7b"
+CLOUDFLARE_MODEL = "@cf/qwen/qwen2.5-coder-32b-instruct"
 
 
 def _numbered(code: str) -> str:
@@ -101,12 +101,13 @@ def generate_student_feedback_batch(questions: list[dict]) -> dict[str, dict]:
     Você é um assistente pedagógico especializado em ensino de programação introdutória em C.
 
     Você receberá várias questões resolvidas pelo mesmo aluno. Gere um feedback personalizado para cada questão, individualmente.
+    
 
     Regras gerais (valem para todas as questões):
     - NÃO entregue a solução pronta, guie o aluno a descobrir o problema.
     - Se o código está correto, aponte os pontos positivos.
     - Se o código está incorreto, aponte a linha e explique o conceito por trás do problema, mas sem dar a resposta.
-    - Utilize inguagem acessível, em português.
+    - Utilize linguagem acessível, em português.
     - Seja específico ao código do aluno, não genérico.
     - Em pontos_fortes e melhorias, use no máximo 3 itens cada.
 
@@ -124,36 +125,40 @@ def generate_student_feedback_batch(questions: list[dict]) -> dict[str, dict]:
     ]
     }
     """ + corpo
-
-
+       
     try:    
-        logger.info("═══ PROMPT ENVIADO AO OLLAMA (primeiros 800 chars) ═══\n%s", prompt[:800])
+        logger.info("═══ PROMPT ENVIADO À CLOUDFLARE ═══\n%s", prompt[:800])
 
         client = OpenAI(
-            base_url=OLLAMA_BASE_URL,
-            api_key="ollama",
+            base_url=f"https://api.cloudflare.com/client/v4/accounts/{CLOUDFLARE_ACCOUNT_ID}/ai/v1",
+            api_key=CLOUDFLARE_API_TOKEN,
         )
 
         response = client.chat.completions.create(
-            model=OLLAMA_MODEL,
-            messages=[
-                {"role": "user", "content": prompt}
-            ],
+            model=CLOUDFLARE_MODEL,
+            messages=[{"role": "user", "content": prompt}],
             temperature=0.7,
+            max_tokens=2048,
         )
         
-        text = response.choices[0].message.content
+        raw_text = response.choices[0].message.content
 
-        logger.info("═══ RESPOSTA CRUA DO OLLAMA ═══\n%s", (text or "")[:800])
+        if isinstance(raw_text, dict):
+            data = raw_text
+            logger.info("═══ RESPOSTA DA CLOUDFLARE (Já era Dict) ═══\n%s", str(data)[:800])
+        else:
+            text = str(raw_text) if raw_text is not None else ""
+            logger.info("═══ RESPOSTA CRUA DA CLOUDFLARE ═══\n%s", text[:800])
+            
+            if not text or text == "None":
+                logger.warning("Resposta vazia da Cloudflare para feedback em lote.")
+                return {
+                    str(q["number"]): _empty_feedback("Resposta vazia do modelo.")
+                    for q in questions
+                }
+            
+            data = _parse_json(text)
 
-        if not text:
-            logger.warning("Resposta vazia do Ollama para feedback em lote.")
-            return {
-                str(q["number"]): _empty_feedback("Resposta vazia do modelo.")
-                for q in questions
-            }
-
-        data = _parse_json(text)
         lista = data.get("feedbacks") if isinstance(data.get("feedbacks"), list) else []
 
         # Indexa por number (string) para casar com a chave esperada pelo frontend
@@ -174,7 +179,7 @@ def generate_student_feedback_batch(questions: list[dict]) -> dict[str, dict]:
         return resultado
 
     except Exception as e:
-        logger.exception("Falha ao gerar feedback em lote via Ollama: %s", e)
+        logger.exception("Falha ao gerar feedback em lote via Cloudflare: %s", e)
         return {str(q["number"]): _empty_feedback(str(e)) for q in questions}
 
 

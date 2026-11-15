@@ -6,6 +6,9 @@ load_dotenv()
 GEMINI_API_KEY: str = os.environ.get("GEMINI_API_KEY", "")
 DATABASE_URL: str = os.environ.get("DATABASE_URL", "")
 
+CLOUDFLARE_ACCOUNT_ID: str = os.environ.get("CLOUDFLARE_ACCOUNT_ID", "")
+CLOUDFLARE_API_TOKEN: str = os.environ.get("CLOUDFLARE_API_TOKEN", "")
+
 SECRET_KEY: str = os.environ.get(
     "SECRET_KEY",
     "dev-secret-key-troque-em-producao-please-change-me-now",

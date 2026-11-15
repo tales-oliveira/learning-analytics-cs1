@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import {
-  getExam, getResults, getActiveJobs,
+  getExam, publishExam, getResults, getActiveJobs,
   deleteExam, updateExam, createQuestion, updateQuestion, deleteQuestion,
 } from '../api/exam'
 import Spinner from '../components/Spinner'
@@ -21,6 +21,12 @@ export default function ExamDashboard() {
   const [extractJob, setExtractJob] = useState(null)   // job de extração via Gemini
   const [statementQ, setStatementQ] = useState(null)   // questão no modal de enunciado
   const hadJob = useRef(false)
+
+  // "agendamento" das provas
+  const [scheduleOpen, setScheduleOpen] = useState(false)
+  const [startTime, setStartTime] = useState('')
+  const [endTime, setEndTime] = useState('')
+  const [publishing, setPublishing] = useState(false)
 
   // CRUD de prova / questão
   const [questionForm, setQuestionForm] = useState(null) // {mode:'add'|'edit', question}
@@ -87,11 +93,45 @@ export default function ExamDashboard() {
     }
   }
 
+  const handlePublish = async (e) => {
+    e.preventDefault()
+    if (!startTime || !endTime) {
+      setError('Preencha a data e hora de início e término.')
+      return
+    }
+    if (new Date(startTime) >= new Date(endTime)) {
+      setError('O término deve ser depois do início.')
+      return
+    }
+    
+    setPublishing(true)
+    setError('')
+    try {
+      //await publishExam(id, new Date(startTime).toISOString(), new Date(endTime).toISOString())
+      await publishExam(id, startTime, endTime)
+      setScheduleOpen(false)
+      await loadExam() // Recarrega para mostrar que foi publicada
+    } catch (e) {
+      setError(e.response?.data?.detail || 'Erro ao publicar a prova.')
+    } finally {
+      setPublishing(false)
+    }
+  }
+
+
   const loadExam = () =>
     Promise.all([getExam(id), getResults(id).catch(() => null)])
       .then(([examRes, resultsRes]) => {
         setExam(examRes.data)
         if (resultsRes) setResults(resultsRes.data)
+
+        // Preenche as datas se a prova já tiver agendamento
+        if (examRes.data.start_time) {
+          setStartTime(examRes.data.start_time.slice(0, 16)) // Formato para datetime-local
+        }
+        if (examRes.data.end_time) {
+          setEndTime(examRes.data.end_time.slice(0, 16))
+        }
       })
       .catch(() => setError('Erro ao carregar a prova.'))
 
@@ -204,6 +244,42 @@ export default function ExamDashboard() {
           </button>
         </div>
       </div>
+
+
+
+	  {/* ── CARD DE STATUS DA PROVA ── */}
+      <div className={`mb-6 rounded-xl border px-5 py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 ${
+        exam.is_published ? 'bg-green-50 border-green-200' : 'bg-amber-50 border-amber-200'
+      }`}>
+        <div>
+          <h3 className={`text-sm font-semibold flex items-center gap-2 ${exam.is_published ? 'text-green-800' : 'text-amber-800'}`}>
+            {exam.is_published ? (
+              <><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg> Prova Publicada</>
+            ) : (
+              <><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg> Rascunho: Não visível para os alunos</>
+            )}
+          </h3>
+          <p className={`text-xs mt-1 ${exam.is_published ? 'text-green-600' : 'text-amber-600'}`}>
+            {exam.is_published 
+              ? `Disponível de ${new Date(exam.start_time).toLocaleString()} até ${new Date(exam.end_time).toLocaleString()}.`
+              : 'Agende um horário para que a prova fique disponível na turma.'}
+          </p>
+        </div>
+        <button
+          onClick={() => setScheduleOpen(true)}
+          className={`shrink-0 text-sm px-4 py-2 rounded-lg font-medium transition-colors ${
+            exam.is_published 
+              ? 'bg-white border border-green-300 text-green-700 hover:bg-green-100' 
+              : 'bg-amber-600 text-white hover:bg-amber-700'
+          }`}
+        >
+          {exam.is_published ? 'Editar Agendamento' : 'Agendar e Publicar'}
+        </button>
+      </div>
+
+
+
+
 
       {extractJob && (
         <div className="mb-5 rounded-xl border border-purple-200 bg-purple-50 px-5 py-4">
@@ -433,6 +509,49 @@ export default function ExamDashboard() {
               className="inline-flex items-center gap-2 text-sm px-4 py-2 rounded-lg bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-40 transition-colors">
               {busy && <Spinner className="w-4 h-4" />}
               Salvar
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+	<Modal open={scheduleOpen} onClose={() => setScheduleOpen(false)} title={exam.is_published ? "Editar Agendamento" : "Agendar e Publicar Prova"}>
+        <form onSubmit={handlePublish} className="space-y-4">
+          <p className="text-sm text-gray-500">
+            Defina o período de disponibilidade. Após o término, os alunos poderão visualizar os feedbacks.
+          </p>
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Início</label>
+              <input
+                type="datetime-local"
+                value={startTime}
+                onChange={e => setStartTime(e.target.value)}
+                required
+                className="w-full text-sm rounded-lg border border-gray-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Término</label>
+              <input
+                type="datetime-local"
+                value={endTime}
+                onChange={e => setEndTime(e.target.value)}
+                required
+                className="w-full text-sm rounded-lg border border-gray-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2">
+            <button type="button" onClick={() => setScheduleOpen(false)}
+              className="text-sm px-4 py-2 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors">
+              Cancelar
+            </button>
+            <button type="submit" disabled={publishing}
+              className="inline-flex items-center gap-2 text-sm px-4 py-2 rounded-lg bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-40 transition-colors">
+              {publishing && <Spinner className="w-4 h-4" />}
+              {exam.is_published ? 'Salvar Alterações' : 'Publicar Prova'}
             </button>
           </div>
         </form>

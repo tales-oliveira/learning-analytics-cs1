@@ -12,6 +12,7 @@ const ProfilePage = lazy(() => import('./pages/ProfilePage'))
 const StudentPage = lazy(() => import('./pages/StudentPage'))
 const StudentTurmaPage = lazy(() => import('./pages/StudentTurmaPage'))
 const StudentSubmitPage = lazy(() => import('./pages/StudentSubmitPage'))
+const StudentExamFeedbackPage = lazy(() => import('./pages/StudentExamFeedbackPage'));
 
 
 function PageFallback() {
@@ -41,6 +42,7 @@ export default function App() {
                 <Route path="/student" element={<StudentPage />} />
                 <Route path="/student/turma/:turmaId" element={<StudentTurmaPage />} />
                 <Route path="/student/exam/:examId" element={<StudentSubmitPage />} />
+                <Route path="/student/exam/:examId/feedback" element={<StudentExamFeedbackPage />} />
               </Route>
 
             </Route>

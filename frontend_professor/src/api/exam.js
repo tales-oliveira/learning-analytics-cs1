@@ -1,11 +1,16 @@
 import api from './client'
 
-export const uploadExam = (file, turmaId = null) => {
+export const uploadExam = (file, turmaId = null, startTime = null, endTime = null) => {
   const form = new FormData()
   form.append('file', file)
   if (turmaId) form.append('turma_id', String(turmaId))
+  if (startTime) form.append('start_time', startTime)
+  if (endTime) form.append('end_time', endTime)
   return api.post('/exam/upload', form)
 }
+
+export const publishExam = (examId, startTime, endTime) => 
+  api.put(`/exam/${examId}/publish`, { start_time: startTime, end_time: endTime });
 
 export const getExam = (id) => api.get(`/exam/${id}`)
 
@@ -92,3 +97,4 @@ export const deleteTestCase = (examId, questionNumber, tcId) =>
 
 export const updateTestCase = (examId, questionNumber, tcId, data) =>
   api.put(`/exam/${examId}/questions/${questionNumber}/testcases/${tcId}`, data)
+

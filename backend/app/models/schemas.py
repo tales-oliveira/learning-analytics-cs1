@@ -1,5 +1,6 @@
 from pydantic import BaseModel, EmailStr, Field
 from typing import List, Optional, Literal
+from datetime import datetime
 
 
 class ProfessorCreate(BaseModel):
@@ -206,6 +207,8 @@ class TestCaseUpdateRequest(BaseModel):
 class ExamUpdate(BaseModel):
     filename: Optional[str] = None
     turma_id: Optional[int] = None
+    start_time: Optional[datetime] = None
+    end_time: Optional[datetime] = None 
 
 
 class QuestionCreate(BaseModel):
@@ -252,10 +255,19 @@ class QuestionResponse(BaseModel):
     warnings: List[str] = []
 
 
+class PublishExamRequest(BaseModel):
+    start_time: datetime
+    end_time: datetime
+
 class ExamResponse(BaseModel):
     id: int
     filename: str
     created_at: str
+    is_published: bool = False
+    start_time: Optional[datetime] = None
+    end_time: Optional[datetime] = None
+    status: str = "active"
+    is_expired: bool = False
     turma_id: Optional[int] = None
     turma_nome: Optional[str] = None
     total_points: float = 0.0
@@ -443,7 +455,8 @@ class SubmitExamRequest(BaseModel):
 
 class SubmitExamResponse(BaseModel):
     ok: bool
-    feedback: dict[str, StudentFeedback] = Field(default_factory=dict)
+    message: str = "Prova enviada com sucesso."
+    #feedback: dict[str, StudentFeedback] = Field(default_factory=dict) (teste do feedback)
     # Resultado completo do evaluate_code por questão (dict livre).
     results: dict[str, dict] = Field(default_factory=dict)
 

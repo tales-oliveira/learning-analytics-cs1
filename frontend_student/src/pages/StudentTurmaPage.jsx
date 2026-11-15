@@ -87,26 +87,57 @@ export default function StudentTurmaPage() {
               <p className="text-center py-12 text-sm text-gray-400">Nenhuma avaliação encontrada.</p>
             ) : (
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {displayedExams.map(exam => (
-                  <div key={exam.id} className="bg-white rounded-xl border border-gray-200 p-5 flex flex-col justify-between hover:border-purple-300 hover:shadow-sm transition-all">
-                    <div className="mb-4">
-                      <h2 className="text-base font-semibold text-gray-900 leading-tight mb-2 truncate">
-                        {exam.filename}
-                      </h2>
-                      <div className="flex gap-4 text-xs text-gray-500">
-                        <span>{exam.question_count} {exam.question_count === 1 ? 'questão' : 'questões'}</span>
+                {displayedExams
+                  .filter(exam => exam.status !== 'upcoming') // Oculta as provas que ainda não começaram
+                  .map(exam => {
+                  
+                  const isActive = exam.status === 'active';
+                  const isEnded = exam.status === 'ended';
+
+                  return (
+                    <div key={exam.id} className="bg-white rounded-xl border border-gray-200 p-5 flex flex-col justify-between hover:border-purple-300 hover:shadow-sm transition-all">
+                      <div className="mb-4">
+                        <h2 className="text-base font-semibold text-gray-900 leading-tight mb-2 truncate">
+                          {exam.filename}
+                        </h2>
+                        <div className="flex gap-4 text-xs text-gray-500">
+                          <span>{exam.question_count} {exam.question_count === 1 ? 'questão' : 'questões'}</span>
+                        </div>
+                        
+                        {/* Status visual */}
+                        {isActive && (
+                          <span className="inline-block mt-3 text-xs font-medium text-green-700 bg-green-50 px-2 py-1 rounded-md">
+                            ⏳ Em andamento (Até {new Date(exam.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})
+                          </span>
+                        )}
+                        {isEnded && (
+                          <span className="inline-block mt-3 text-xs font-medium text-gray-600 bg-gray-100 px-2 py-1 rounded-md">
+                            ✓ Encerrada
+                          </span>
+                        )}
                       </div>
-                      <p className="text-xs text-gray-400 mt-2">{formatDate(exam.created_at)}</p>
+                      
+                      {/* Botões de ação */}
+                      {isActive && (
+                        <button
+                          onClick={() => navigate(`/student/exam/${exam.id}`)}
+                          className="w-full text-sm px-4 py-2 rounded-lg bg-purple-600 text-white hover:bg-purple-700 transition-colors text-center font-medium"
+                        >
+                          Acessar Avaliação
+                        </button>
+                      )}
+                      
+                      {isEnded && (
+                        <button
+                          onClick={() => navigate(`/student/exam/${exam.id}/feedback`)}
+                          className="w-full text-sm px-4 py-2 rounded-lg bg-gray-800 text-white hover:bg-gray-900 transition-colors text-center font-medium"
+                        >
+                          Ver Feedback e Notas
+                        </button>
+                      )}
                     </div>
-                    
-                    <button
-                      onClick={() => navigate(`/student/exam/${exam.id}`)}
-                      className="w-full text-sm px-4 py-2 rounded-lg bg-purple-600 text-white hover:bg-purple-700 transition-colors text-center font-medium"
-                    >
-                      Acessar Avaliação
-                    </button>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </>

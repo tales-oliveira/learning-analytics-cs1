@@ -1,6 +1,7 @@
 from typing import Optional
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from sqlalchemy.orm import Session
+from datetime import datetime
 
 from app.auth.dependencies import get_current_professor
 from app.auth.ownership import get_exam_or_404, get_question_or_404
@@ -14,6 +15,7 @@ from app.models.schemas import (
     ClusteringResponse,
     ClusterInsight,
     ExamResponse,
+    PublishExamRequest,
     ExamResultsResponse,
     ExamStudentsResponse,
     ExamUpdate,
@@ -107,6 +109,8 @@ def get_exam(exam_id: int, db: Session = Depends(get_db)):
 async def upload_exam(
     file: UploadFile = File(...),
     turma_id: Optional[int] = Form(None),
+    #start_time: Optional[str] = Form(None),
+    #end_time: Optional[str] = Form(None), 
     db: Session = Depends(get_db),
     professor: Professor = Depends(get_current_professor),
 ):
@@ -121,13 +125,43 @@ async def upload_exam(
         ).first()
         if not turma:
             raise HTTPException(status_code=404, detail="Turma não encontrada.")
+
+    #parsed_start = datetime.fromisoformat(start_time) if start_time else None
+    #parsed_end = datetime.fromisoformat(end_time) if end_time else None
+
     file_bytes = await file.read()
     try:
         exam, job = start_exam_processing(
             file_bytes, file.filename, db, turma_id=turma_id, professor_id=professor.id)
+
+        #exam.start_time = parsed_start
+        #exam.end_time = parsed_end
+        db.commit()
+        
         return ExamUploadStartResponse(exam_id=exam.id, job_id=job.id)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.put("/{exam_id}/publish", response_model=ExamResponse)
+def publish_exam(
+    exam_id: int,
+    body: PublishExamRequest,
+    db: Session = Depends(get_db),
+    professor: Professor = Depends(get_current_professor),
+):
+    exam = get_exam_or_404(exam_id, db, professor_id=professor.id)
+    
+    if body.start_time >= body.end_time:
+        raise HTTPException(status_code=400, detail="O término deve ser depois do início.")
+        
+    exam.start_time = body.start_time
+    exam.end_time = body.end_time
+    exam.is_published = True
+    db.commit()
+    db.refresh(exam)
+    
+    return exam_to_response(exam)
 
 
 @router.patch("/{exam_id}", response_model=ExamResponse)
