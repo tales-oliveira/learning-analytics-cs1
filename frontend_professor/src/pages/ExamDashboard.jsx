@@ -18,18 +18,16 @@ export default function ExamDashboard() {
   const [results, setResults] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [extractJob, setExtractJob] = useState(null)   // job de extração via Gemini
-  const [statementQ, setStatementQ] = useState(null)   // questão no modal de enunciado
+  const [extractJob, setExtractJob] = useState(null)
+  const [statementQ, setStatementQ] = useState(null)
   const hadJob = useRef(false)
 
-  // "agendamento" das provas
   const [scheduleOpen, setScheduleOpen] = useState(false)
   const [startTime, setStartTime] = useState('')
   const [endTime, setEndTime] = useState('')
   const [publishing, setPublishing] = useState(false)
 
-  // CRUD de prova / questão
-  const [questionForm, setQuestionForm] = useState(null) // {mode:'add'|'edit', question}
+  const [questionForm, setQuestionForm] = useState(null)
   const [savingQ, setSavingQ] = useState(false)
   const [deleteQ, setDeleteQ] = useState(null)
   const [busy, setBusy] = useState(false)
@@ -107,10 +105,9 @@ export default function ExamDashboard() {
     setPublishing(true)
     setError('')
     try {
-      //await publishExam(id, new Date(startTime).toISOString(), new Date(endTime).toISOString())
       await publishExam(id, startTime, endTime)
       setScheduleOpen(false)
-      await loadExam() // Recarrega para mostrar que foi publicada
+      await loadExam()
     } catch (e) {
       setError(e.response?.data?.detail || 'Erro ao publicar a prova.')
     } finally {
@@ -118,16 +115,14 @@ export default function ExamDashboard() {
     }
   }
 
-
   const loadExam = () =>
     Promise.all([getExam(id), getResults(id).catch(() => null)])
       .then(([examRes, resultsRes]) => {
         setExam(examRes.data)
         if (resultsRes) setResults(resultsRes.data)
 
-        // Preenche as datas se a prova já tiver agendamento
         if (examRes.data.start_time) {
-          setStartTime(examRes.data.start_time.slice(0, 16)) // Formato para datetime-local
+          setStartTime(examRes.data.start_time.slice(0, 16))
         }
         if (examRes.data.end_time) {
           setEndTime(examRes.data.end_time.slice(0, 16))
@@ -137,10 +132,8 @@ export default function ExamDashboard() {
 
   useEffect(() => {
     loadExam().finally(() => setLoading(false))
-  }, [id]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [id])
 
-  // Acompanha a extração de questões (Gemini) que roda em segundo plano: enquanto
-  // houver um job ativo desta prova, exibe o progresso; ao concluir, recarrega.
   useEffect(() => {
     let alive = true
     const tick = async () => {
@@ -153,20 +146,24 @@ export default function ExamDashboard() {
           hadJob.current = true
         } else if (hadJob.current) {
           hadJob.current = false
-          loadExam()  // job terminou → questões/casos já persistidos
+          loadExam()
         }
-      } catch { /* silencioso */ }
+      } catch { }
     }
     tick()
     const t = setInterval(tick, 2000)
     return () => { alive = false; clearInterval(t) }
-  }, [id]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [id])
 
   if (loading) return <div className="flex justify-center py-16"><Spinner className="w-6 h-6 text-purple-600" /></div>
   if (error) return <p className="text-red-600 text-sm">{error}</p>
 
   const resultsByQuestion = {}
   results?.questions?.forEach(q => { resultsByQuestion[q.question_number] = q })
+
+  const isExtracting = !!extractJob
+  const hasQuestions = exam.questions && exam.questions.length > 0
+  const canPublish = hasQuestions && !isExtracting
 
   return (
     <div>
@@ -245,9 +242,6 @@ export default function ExamDashboard() {
         </div>
       </div>
 
-
-
-	  {/* ── CARD DE STATUS DA PROVA ── */}
       <div className={`mb-6 rounded-xl border px-5 py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 ${
         exam.is_published ? 'bg-green-50 border-green-200' : 'bg-amber-50 border-amber-200'
       }`}>
@@ -265,21 +259,28 @@ export default function ExamDashboard() {
               : 'Agende um horário para que a prova fique disponível na turma.'}
           </p>
         </div>
-        <button
-          onClick={() => setScheduleOpen(true)}
-          className={`shrink-0 text-sm px-4 py-2 rounded-lg font-medium transition-colors ${
-            exam.is_published 
-              ? 'bg-white border border-green-300 text-green-700 hover:bg-green-100' 
-              : 'bg-amber-600 text-white hover:bg-amber-700'
-          }`}
-        >
-          {exam.is_published ? 'Editar Agendamento' : 'Agendar e Publicar'}
-        </button>
+        
+        <div className="flex flex-col items-end gap-1">
+          <button
+            onClick={() => setScheduleOpen(true)}
+            disabled={!canPublish}
+            className={`shrink-0 text-sm px-4 py-2 rounded-lg font-medium transition-colors ${
+              !canPublish
+                ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                : exam.is_published 
+                  ? 'bg-white border border-green-300 text-green-700 hover:bg-green-100' 
+                  : 'bg-amber-600 text-white hover:bg-amber-700'
+            }`}
+          >
+            {exam.is_published ? 'Editar Agendamento' : 'Agendar e Publicar'}
+          </button>
+          {!canPublish && (
+            <span className="text-[10px] text-gray-400">
+              {isExtracting ? 'Aguardando extração...' : 'Adicione questões primeiro'}
+            </span>
+          )}
+        </div>
       </div>
-
-
-
-
 
       {extractJob && (
         <div className="mb-5 rounded-xl border border-purple-200 bg-purple-50 px-5 py-4">
@@ -514,7 +515,7 @@ export default function ExamDashboard() {
         </form>
       </Modal>
 
-	<Modal open={scheduleOpen} onClose={() => setScheduleOpen(false)} title={exam.is_published ? "Editar Agendamento" : "Agendar e Publicar Prova"}>
+      <Modal open={scheduleOpen} onClose={() => setScheduleOpen(false)} title={exam.is_published ? "Editar Agendamento" : "Agendar e Publicar Prova"}>
         <form onSubmit={handlePublish} className="space-y-4">
           <p className="text-sm text-gray-500">
             Defina o período de disponibilidade. Após o término, os alunos poderão visualizar os feedbacks.

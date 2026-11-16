@@ -11,8 +11,6 @@ export default function ExamUploadPage() {
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState('')
   const inputRef = useRef(null)
-  const [startTime, setStartTime] = useState('')
-  const [endTime, setEndTime] = useState('')
 
   useEffect(() => {
     getTurma(turmaId).then(({ data }) => setTurma(data)).catch(() => {})
@@ -25,21 +23,11 @@ export default function ExamUploadPage() {
       setError('Formato inválido. Envie PDF ou DOCX.')
       return
     }
-
-	if (!startTime || !endTime) {
-		setError('Por favor, defina a data/hora de início e de término da prova.')
-		return
-	}
-	if (new Date(startTime) >= new Date(endTime)) {
-		setError('O horário de término deve ser depois do horário de início.')
-		return
-	}
-
     setError('')
     setUploading(true)
     try {
+      // Agora só envia o arquivo. As datas serão definidas no dashboard.
       const { data } = await uploadExam(file, turmaId)
-      // A extração das questões roda em segundo plano; o dashboard exibe o progresso.
       navigate(`/exam/${data.exam_id}`)
     } catch (e) {
       setError(e.response?.data?.detail || 'Erro ao processar a prova. Tente novamente.')
@@ -55,29 +43,7 @@ export default function ExamUploadPage() {
   }
 
   return (
-	
     <div className="max-w-xl mx-auto mt-8">
-		<div className="mb-6 grid grid-cols-2 gap-4 bg-white p-4 rounded-xl border border-gray-200">
-			<div>
-				<label className="block text-xs font-medium text-gray-700 mb-1">Início da Prova</label>
-				<input 
-				type="datetime-local" 
-				value={startTime} 
-				onChange={e => setStartTime(e.target.value)} 
-				className="w-full text-sm rounded-lg border border-gray-300 px-3 py-2 focus:ring-purple-500" 
-				/>
-			</div>
-			<div>
-				<label className="block text-xs font-medium text-gray-700 mb-1">Término da Prova</label>
-				<input 
-				type="datetime-local" 
-				value={endTime} 
-				onChange={e => setEndTime(e.target.value)} 
-				className="w-full text-sm rounded-lg border border-gray-300 px-3 py-2 focus:ring-purple-500" 
-				/>
-			</div>
-			</div>
-
       <div className="flex items-center gap-2 text-sm text-gray-400 mb-8">
         <Link to="/" className="hover:text-gray-600">Turmas</Link>
         <span>›</span>

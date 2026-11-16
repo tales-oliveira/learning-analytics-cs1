@@ -109,8 +109,6 @@ def get_exam(exam_id: int, db: Session = Depends(get_db)):
 async def upload_exam(
     file: UploadFile = File(...),
     turma_id: Optional[int] = Form(None),
-    #start_time: Optional[str] = Form(None),
-    #end_time: Optional[str] = Form(None), 
     db: Session = Depends(get_db),
     professor: Professor = Depends(get_current_professor),
 ):
